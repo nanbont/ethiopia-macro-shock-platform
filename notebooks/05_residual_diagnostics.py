@@ -31,9 +31,3 @@ band = 1.96 / len(residuals) ** 0.5
 print(f"\nAutocorrelations beyond +/- {band:.2f} are statistically significant.")
 
 
-# --- Which months produce the largest exchange-rate surprises? ---
-fx_residuals = residuals["etb_per_usd"]
-print("\n8 largest exchange-rate residuals (by size):")
-largest = fx_residuals.abs().nlargest(8).index
-print(fx_residuals.loc[largest].round(2))
-print(f"\nTypical residual size (median absolute): {fx_residuals.abs().median():.2f}")

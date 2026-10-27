@@ -1,4 +1,8 @@
-"""VAR model: variable ordering, data preparation and lag selection."""
+"""VARX model: oil, urea and CPI as endogenous variables, the birr as an external input.
+
+The birr/USD rate was set administratively by the National Bank of Ethiopia for most
+of the sample, so the model takes it as given rather than trying to explain it.
+"""
 from __future__ import annotations
 
 import pandas as pd
@@ -8,27 +12,41 @@ from emsp.processing.diagnostics import log_diff
 from emsp.processing.regimes import make_event_dummies, make_seasonal_dummies
 
 # Cholesky ordering: most exogenous first. Ethiopia cannot move world prices.
-VARIABLE_ORDER = ["brent_usd_bbl", "urea_usd_mt", "etb_per_usd", "cpi_index"]
+ENDOGENOUS = ["brent_usd_bbl", "urea_usd_mt", "cpi_index"]
+EXCHANGE_RATE = "etb_per_usd"
+FX_LAGS = 3  # current month + 3 previous months of depreciation
+
+
+def exchange_rate_terms(fx_change: pd.Series, max_lag: int = FX_LAGS) -> pd.DataFrame:
+    """Current and lagged depreciation, one column per lag (lag0 = this month)."""
+    return pd.DataFrame({f"etb_change_lag{k}": fx_change.shift(k) for k in range(max_lag + 1)})
 
 
 def prepare_var_data(levels: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Turn levels into monthly % changes and build the matching dummy variables."""
-    changes = log_diff(levels[VARIABLE_ORDER]).asfreq("MS")  # tell statsmodels it's monthly
+    """Return (endogenous monthly % changes, external inputs) on the same dates."""
+    changes = log_diff(levels[ENDOGENOUS + [EXCHANGE_RATE]]).asfreq("MS")
+
     exog = pd.concat(
-        [make_event_dummies(changes.index), make_seasonal_dummies(changes.index)], axis=1
-    )
-    exog = exog.loc[:, exog.sum() > 0]  # drop events outside the sample (all-zero columns)
-    return changes, exog
+        [
+            exchange_rate_terms(changes[EXCHANGE_RATE]),
+            make_event_dummies(changes.index)[["post_float_regime"]],
+            make_seasonal_dummies(changes.index),
+        ],
+        axis=1,
+    ).dropna()  # the first FX_LAGS months have no lagged depreciation
+    exog = exog.loc[:, exog.sum() != 0]  # drop any all-zero columns
+
+    endog = changes.loc[exog.index, ENDOGENOUS]
+    return endog, exog
 
 
 def select_lag_order(changes: pd.DataFrame, exog: pd.DataFrame, max_lags: int = 12):
     """Compare lag lengths from 0 to max_lags using AIC, BIC, HQIC and FPE."""
-    model = VAR(changes, exog=exog)
-    return model.select_order(maxlags=max_lags)
+    return VAR(changes, exog=exog).select_order(maxlags=max_lags)
 
 
 def fit_var(changes: pd.DataFrame, exog: pd.DataFrame, lags: int):
-    """Estimate a VAR with the given number of lags."""
+    """Estimate the VARX with the given number of lags."""
     return VAR(changes, exog=exog).fit(lags)
 
 
