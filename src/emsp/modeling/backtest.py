@@ -8,6 +8,11 @@ from emsp.modeling.forecast import forecast_cpi
 from emsp.modeling.var_model import EXCHANGE_RATE, fit_var, prepare_var_data
 from emsp.processing.diagnostics import log_diff
 
+# The float's transition months. A forecast made before August 2024 whose window
+# reaches July 2024 or later had to predict across the regime change.
+FLOAT_FIRST_MONTH = pd.Timestamp("2024-07-01")
+FLOAT_LAST_MONTH = pd.Timestamp("2024-08-01")
+
 
 def yoy_inflation(cpi: pd.Series) -> pd.Series:
     """Year-on-year inflation in percent."""
@@ -21,7 +26,8 @@ def run_backtest(
     forecast `horizon` months ahead, and record the forecast next to the outcome.
 
     The model receives the ACTUAL birr path (conditional forecast). The naive
-    benchmark assumes inflation stays at its latest value.
+    benchmark assumes inflation stays at its latest value. `spans_float` marks
+    forecasts that had to predict across the 2024 regime change.
     """
     actual_yoy = yoy_inflation(levels["cpi_index"])
     actual_fx = log_diff(levels[[EXCHANGE_RATE]])[EXCHANGE_RATE]
@@ -44,6 +50,7 @@ def run_backtest(
                 "actual": actual_yoy.loc[month],
                 "model": forecast.loc[month, "yoy_inflation_pct"],
                 "naive": actual_yoy.loc[origin],
+                "spans_float": bool(origin < FLOAT_LAST_MONTH and month >= FLOAT_FIRST_MONTH),
             })
     return pd.DataFrame(rows)
 

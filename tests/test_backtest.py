@@ -33,3 +33,14 @@ def test_summary_has_one_row_per_horizon():
 
     assert list(summary.index) == [1, 2, 3]
     assert (summary["model_rmse"] > 0).all()
+
+
+def test_forecasts_crossing_the_float_are_flagged():
+    levels = make_fake_levels()
+    backtest = run_backtest(levels, start="2024-01-01", horizon=3)
+    flag = backtest.set_index(["origin", "horizon"])["spans_float"]
+
+    assert flag.loc[(pd.Timestamp("2024-04-01"), 3)]  # targets July 2024
+    assert flag.loc[(pd.Timestamp("2024-07-01"), 1)]  # targets August 2024
+    assert not flag.loc[(pd.Timestamp("2024-08-01"), 1)]  # float already in the data
+    assert not flag.loc[(pd.Timestamp("2024-01-01"), 3)]  # ends before July 2024

@@ -15,6 +15,7 @@ from emsp.processing.regimes import make_event_dummies, make_seasonal_dummies
 ENDOGENOUS = ["brent_usd_bbl", "urea_usd_mt", "cpi_index"]
 EXCHANGE_RATE = "etb_per_usd"
 FX_LAGS = 3  # current month + 3 previous months of depreciation
+MIN_REGIME_MONTHS = 12  # don't estimate a regime effect from fewer months than this
 
 
 def exchange_rate_terms(fx_change: pd.Series, max_lag: int = FX_LAGS) -> pd.DataFrame:
@@ -41,8 +42,13 @@ def prepare_var_data(levels: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return (endogenous monthly % changes, external inputs) on the same dates."""
     changes = log_diff(levels[ENDOGENOUS + [EXCHANGE_RATE]]).asfreq("MS")
     exog = make_exog(changes[EXCHANGE_RATE]).dropna()  # first FX_LAGS months lack lags
-    exog = exog.loc[:, exog.sum() != 0]  # drop any all-zero columns
 
+    # A regime effect estimated from a handful of months is unreliable, and the
+    # forecast would apply it to every future month. Require enough data first.
+    if exog["post_float_regime"].sum() < MIN_REGIME_MONTHS:
+        exog = exog.drop(columns="post_float_regime")
+
+    exog = exog.loc[:, exog.sum() != 0]  # drop any all-zero columns
     endog = changes.loc[exog.index, ENDOGENOUS]
     return endog, exog
 
