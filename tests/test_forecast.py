@@ -1,8 +1,9 @@
-"""Tests for the CPI forecast, using simulated data."""
+"""Tests for the CPI forecast and oil scenarios, using simulated data."""
 import numpy as np
 import pandas as pd
 
-from emsp.modeling.forecast import forecast_cpi
+from emsp.modeling.forecast import forecast_cpi, oil_surprise_pct
+from emsp.modeling.irf import price_level_response
 from emsp.modeling.var_model import (
     ENDOGENOUS,
     EXCHANGE_RATE,
@@ -60,3 +61,29 @@ def test_first_forecast_month_matches_hand_calculation():
         + sum(coef[f"L1.{var}"] * changes[var].iloc[-1] for var in ENDOGENOUS)
     )
     assert abs(by_hand - forecast["monthly_inflation_pct"].iloc[0]) < 1e-9
+
+
+def test_zero_oil_shock_gives_the_baseline():
+    levels, exog, results = fit_fake_model()
+    baseline = forecast_cpi(results, levels, exog.columns, horizon=12)
+    no_shock = forecast_cpi(results, levels, exog.columns, horizon=12, oil_shock_pct=0.0)
+    assert np.allclose(baseline.to_numpy(), no_shock.to_numpy())
+
+
+def test_oil_scenario_gap_equals_the_impulse_response():
+    levels, exog, results = fit_fake_model()
+    baseline = forecast_cpi(results, levels, exog.columns, horizon=12)
+    shocked = forecast_cpi(results, levels, exog.columns, horizon=12, oil_shock_pct=25.0)
+
+    gap = 100 * np.log(shocked["cpi_index"] / baseline["cpi_index"])
+    expected = price_level_response(results, "brent_usd_bbl", "cpi_index", horizon=11, shock_pct=25.0)
+    assert np.allclose(gap.to_numpy(), expected.to_numpy())
+    assert abs(shocked["oil_change_pct"].iloc[0] - baseline["oil_change_pct"].iloc[0] - 25.0) < 1e-9
+
+
+def test_no_surprise_when_oil_matches_the_baseline_forecast():
+    levels, exog, results = fit_fake_model()
+    baseline = forecast_cpi(results, levels, exog.columns, horizon=1)
+    expected_price = levels["brent_usd_bbl"].iloc[-1] * np.exp(baseline["oil_change_pct"].iloc[0] / 100)
+
+    assert abs(oil_surprise_pct(results, levels, exog.columns, expected_price)) < 1e-9
