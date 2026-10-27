@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ethiopia-macro-shock-platform"
+version = "0.1.0"
+description = "VAR-based analysis of commodity and exchange-rate pass-through to inflation in Ethiopia"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "requests>=2.31",
+    "statsmodels>=0.14",
+    "plotly>=5.20",
+    "streamlit>=1.35",
+    "pyyaml>=6.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100

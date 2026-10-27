@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Data (downloaded, not committed)
+data/raw/*
+data/cache/*
+!data/raw/.gitkeep
+!data/cache/.gitkeep
+
+# Never commit source PDFs (IMF documents are not for redistribution)
+*.pdf
+
+# OS / editor
+.DS_Store
+.vscode/
