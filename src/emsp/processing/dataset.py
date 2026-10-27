@@ -70,11 +70,21 @@ def build_dataset(
     """Fetch all sources and return (aligned dataset, coverage report).
 
     extend_fx=True fills the IMF exchange rate after its last month with validated
-    Yahoo Finance data. Set it to False for an official-data-only robustness check.
+    Yahoo Finance data. If Yahoo is unreachable or fails validation, the dataset
+    falls back to official IMF data only, and the coverage report says so in its
+    `note` column. Set extend_fx=False for an official-data-only robustness check.
     """
     fx = get_ethiopia_exchange_rate()
+    fx_note = "IMF"
     if extend_fx:
-        fx, _ = extend_series(fx, get_yahoo_etb_monthly())
+        try:
+            fx, _ = extend_series(fx, get_yahoo_etb_monthly())
+            fx_note = "IMF, extended with validated Yahoo Finance data"
+        except Exception as error:  # network failure, changed Yahoo format, or failed validation
+            fx_note = f"IMF only (Yahoo Finance extension unavailable: {type(error).__name__})"
 
     frames = [get_ethiopia_cpi(), fx, get_commodity_prices(refresh=refresh_prices)]
-    return align_monthly(frames), coverage_report(frames)
+    coverage = coverage_report(frames)
+    coverage["note"] = ""
+    coverage.loc[fx.name, "note"] = fx_note
+    return align_monthly(frames), coverage

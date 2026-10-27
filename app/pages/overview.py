@@ -14,6 +14,12 @@ st.caption(
 data, coverage, prices = load_data()
 inflation = yoy_inflation(data["cpi_index"]).dropna()
 
+if coverage.loc["etb_per_usd", "note"].startswith("IMF only"):
+    st.warning(
+        "Recent exchange-rate data could not be loaded from Yahoo Finance, so the model uses "
+        "official IMF data only, which ends earlier. See 'Data freshness' below."
+    )
+
 # --- Headline numbers ---------------------------------------------------------
 latest = inflation.index[-1]
 fx = data["etb_per_usd"]
@@ -70,7 +76,7 @@ st.caption(
 )
 SOURCE_LABELS = {
     "cpi_index": "Consumer price index (IMF)",
-    "etb_per_usd": "Birr per US$ (IMF, extended with Yahoo Finance)",
+    "etb_per_usd": "Birr per US$",
     "brent_usd_bbl": "Brent crude oil (World Bank)",
     "urea_usd_mt": "Urea (World Bank)",
 }
