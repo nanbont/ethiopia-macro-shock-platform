@@ -22,18 +22,25 @@ def exchange_rate_terms(fx_change: pd.Series, max_lag: int = FX_LAGS) -> pd.Data
     return pd.DataFrame({f"etb_change_lag{k}": fx_change.shift(k) for k in range(max_lag + 1)})
 
 
+def make_exog(fx_change: pd.Series) -> pd.DataFrame:
+    """All external inputs for the dates in fx_change.
+
+    Used for BOTH estimation and forecasting, so the two can never drift apart.
+    """
+    return pd.concat(
+        [
+            exchange_rate_terms(fx_change),
+            make_event_dummies(fx_change.index)[["post_float_regime"]],
+            make_seasonal_dummies(fx_change.index),
+        ],
+        axis=1,
+    )
+
+
 def prepare_var_data(levels: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return (endogenous monthly % changes, external inputs) on the same dates."""
     changes = log_diff(levels[ENDOGENOUS + [EXCHANGE_RATE]]).asfreq("MS")
-
-    exog = pd.concat(
-        [
-            exchange_rate_terms(changes[EXCHANGE_RATE]),
-            make_event_dummies(changes.index)[["post_float_regime"]],
-            make_seasonal_dummies(changes.index),
-        ],
-        axis=1,
-    ).dropna()  # the first FX_LAGS months have no lagged depreciation
+    exog = make_exog(changes[EXCHANGE_RATE]).dropna()  # first FX_LAGS months lack lags
     exog = exog.loc[:, exog.sum() != 0]  # drop any all-zero columns
 
     endog = changes.loc[exog.index, ENDOGENOUS]
