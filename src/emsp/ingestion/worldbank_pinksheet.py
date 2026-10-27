@@ -5,6 +5,7 @@ The download URL changes every month, so we look it up from the commodity page.
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -16,6 +17,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (ethiopia-macro-shock-platform research pr
 TIMEOUT_SECONDS = 60
 PRICES_SHEET = "Monthly Prices"
 DEFAULT_PATH = Path("data/raw/cmo_historical_monthly.xlsx")
+MAX_AGE_DAYS = 7  # re-download if the saved file is older than this (the source updates monthly)
 
 # World Bank column name -> our clean column name
 SERIES = {
@@ -82,12 +84,19 @@ def parse_monthly_prices(raw: pd.DataFrame, series: dict[str, str] = SERIES) -> 
     return result
 
 
+def is_stale(path: Path, max_age_days: float = MAX_AGE_DAYS) -> bool:
+    """True if the file was last downloaded more than `max_age_days` ago."""
+    age_seconds = time.time() - path.stat().st_mtime
+    return age_seconds > max_age_days * 24 * 60 * 60
+
+
 def get_commodity_prices(path: Path = DEFAULT_PATH, refresh: bool = False) -> pd.DataFrame:
     """Monthly Brent oil and urea prices in nominal US dollars.
 
-    Downloads the file only if it's missing or refresh=True (saves time and bandwidth).
+    Uses the saved file if it is recent; downloads a new copy if it is missing,
+    older than MAX_AGE_DAYS, or refresh=True.
     """
-    if refresh or not path.exists():
+    if refresh or not path.exists() or is_stale(path):
         download_pinksheet(path)
     raw = pd.read_excel(path, sheet_name=PRICES_SHEET, header=None)
     return parse_monthly_prices(raw)

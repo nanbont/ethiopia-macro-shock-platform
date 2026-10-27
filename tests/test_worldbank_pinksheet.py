@@ -1,10 +1,11 @@
 """Tests for the World Bank Pink Sheet parser. No internet needed."""
+import os
+import time
+
 import pandas as pd
 import pytest
 
-from emsp.ingestion.worldbank_pinksheet import find_download_url, parse_monthly_prices
-
-
+from emsp.ingestion.worldbank_pinksheet import find_download_url, is_stale, parse_monthly_prices
 def make_raw_sheet() -> pd.DataFrame:
     """A miniature copy of the real 'Monthly Prices' sheet, including its quirks."""
     rows = [
@@ -57,3 +58,17 @@ def test_converts_placeholder_dots_to_missing():
 def test_raises_when_a_requested_column_does_not_exist():
     with pytest.raises(ValueError):
         parse_monthly_prices(make_raw_sheet(), series={"Crude oil, Brent": "brent", "Gold": "gold"})
+        
+        
+def test_a_new_file_is_not_stale(tmp_path):
+    saved = tmp_path / "prices.xlsx"
+    saved.write_bytes(b"placeholder")
+    assert not is_stale(saved)
+
+
+def test_a_ten_day_old_file_is_stale(tmp_path):
+    saved = tmp_path / "prices.xlsx"
+    saved.write_bytes(b"placeholder")
+    ten_days_ago = time.time() - 10 * 24 * 60 * 60
+    os.utime(saved, (ten_days_ago, ten_days_ago))  # pretend it was saved 10 days ago
+    assert is_stale(saved)
