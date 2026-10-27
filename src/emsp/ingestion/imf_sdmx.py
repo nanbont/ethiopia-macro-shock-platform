@@ -62,4 +62,15 @@ def get_ethiopia_cpi() -> pd.Series:
     payload = fetch_sdmx_json("CPI", "ETH.CPI._T.IX.M")
     series = parse_single_series(payload)
     series.name = "cpi_index"
+    return series 
+
+
+def get_ethiopia_exchange_rate() -> pd.Series:
+    """Monthly average exchange rate: Ethiopian birr per US dollar.
+
+    Note: IMF publication of this series lags CPI; check the last date before modeling.
+    """
+    payload = fetch_sdmx_json("ER", "ETH.XDC_USD.PA_RT.M")
+    series = parse_single_series(payload)
+    series.name = "etb_per_usd"
     return series
