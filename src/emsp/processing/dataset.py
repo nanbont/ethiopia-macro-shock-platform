@@ -5,6 +5,7 @@ import pandas as pd
 
 from emsp.ingestion.imf_sdmx import get_ethiopia_cpi, get_ethiopia_exchange_rate
 from emsp.ingestion.worldbank_pinksheet import get_commodity_prices
+from emsp.ingestion.yahoo_fx import get_yahoo_etb_monthly
 
 
 def coverage_report(frames: list[pd.Series | pd.DataFrame]) -> pd.DataFrame:
@@ -32,11 +33,48 @@ def align_monthly(frames: list[pd.Series | pd.DataFrame]) -> pd.DataFrame:
     return combined
 
 
-def build_dataset(refresh_prices: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fetch all sources and return (aligned dataset, coverage report)."""
-    frames = [
-        get_ethiopia_cpi(),
-        get_ethiopia_exchange_rate(),
-        get_commodity_prices(refresh=refresh_prices),
-    ]
+def extend_series(
+    official: pd.Series,
+    extension: pd.Series,
+    check_months: int = 12,
+    tolerance_pct: float = 2.0,
+) -> tuple[pd.Series, pd.Series]:
+    """Keep official data where it exists; fill later months from a second source.
+
+    Before trusting the second source, compare both over the last `check_months`
+    overlapping months and refuse if they differ by more than `tolerance_pct`.
+    Returns (combined series, source label per month).
+    """
+    overlap = official.index.intersection(extension.index)[-check_months:]
+    if len(overlap) < check_months:
+        raise ValueError(f"Need {check_months} overlapping months to validate, found {len(overlap)}")
+
+    gap_pct = ((extension.loc[overlap] / official.loc[overlap]) - 1).abs() * 100
+    if gap_pct.max() > tolerance_pct:
+        raise ValueError(f"Sources disagree by up to {gap_pct.max():.2f}% (limit {tolerance_pct}%)")
+
+    later = extension[extension.index > official.index.max()]
+    combined = pd.concat([official, later]).sort_index()
+    combined.name = official.name
+    source = pd.Series(
+        ["official"] * len(official) + ["extension"] * len(later),
+        index=combined.index,
+        name="source",
+    )
+    return combined, source
+
+
+def build_dataset(
+    refresh_prices: bool = False, extend_fx: bool = True
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch all sources and return (aligned dataset, coverage report).
+
+    extend_fx=True fills the IMF exchange rate after its last month with validated
+    Yahoo Finance data. Set it to False for an official-data-only robustness check.
+    """
+    fx = get_ethiopia_exchange_rate()
+    if extend_fx:
+        fx, _ = extend_series(fx, get_yahoo_etb_monthly())
+
+    frames = [get_ethiopia_cpi(), fx, get_commodity_prices(refresh=refresh_prices)]
     return align_monthly(frames), coverage_report(frames)
