@@ -13,19 +13,26 @@ def forecast_cpi(
     levels: pd.DataFrame,
     exog_columns,
     horizon: int = 12,
-    monthly_depreciation_pct: float = 0.5,
+    monthly_depreciation_pct: float | pd.Series = 0.5,
 ) -> pd.DataFrame:
-    """Forecast CPI for `horizon` months, assuming the birr weakens by a constant
-    `monthly_depreciation_pct` each month.
+    """Forecast CPI for `horizon` months, conditional on a birr depreciation path.
 
+    `monthly_depreciation_pct` is either one number (same depreciation every month)
+    or a Series with one value per forecast month (e.g. the actual path in a backtest).
     Returns the CPI index, monthly inflation and year-on-year inflation per month.
     """
     changes = log_diff(levels[ENDOGENOUS + [EXCHANGE_RATE]]).asfreq("MS")
     last_month = changes.index.max()
     future = pd.date_range(last_month + pd.DateOffset(months=1), periods=horizon, freq="MS")
 
-    # Exchange-rate scenario: real history followed by the assumed depreciation path
-    scenario = pd.Series(float(monthly_depreciation_pct), index=future)
+    if isinstance(monthly_depreciation_pct, (int, float)):
+        scenario = pd.Series(float(monthly_depreciation_pct), index=future)
+    else:
+        scenario = pd.Series(monthly_depreciation_pct).reindex(future)
+        if scenario.isna().any():
+            raise ValueError("The depreciation path must cover every forecast month")
+
+    # Exchange-rate path: real history followed by the scenario
     fx_path = pd.concat([changes[EXCHANGE_RATE], scenario])
     exog_future = make_exog(fx_path).loc[future, list(exog_columns)]  # same columns, same order
 
