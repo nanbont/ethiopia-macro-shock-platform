@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from emsp.ingestion.worldbank_pinksheet import get_commodity_prices
+from emsp.modeling.backtest import run_backtest, summarize_backtest
 from emsp.modeling.irf import bootstrap_price_level_response
 from emsp.modeling.var_model import fit_var, prepare_var_data
 from emsp.processing.dataset import build_dataset
@@ -40,4 +41,14 @@ def load_irf_bands(data: pd.DataFrame) -> dict[str, pd.DataFrame]:
     return {
         shock: bootstrap_price_level_response(results, endog, exog, shock, "cpi_index", horizon=24)
         for shock in ["brent_usd_bbl", "urea_usd_mt"]
+    }
+
+
+@st.cache_data(ttl=CACHE_SECONDS, show_spinner="Running the backtest (about 130 model fits)...")
+def load_backtest_summary(data: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """12-month rolling-origin backtest, summarized for normal periods and the float window."""
+    backtest = run_backtest(data, start="2015-01-01", horizon=12, lags=1)
+    return {
+        "normal": summarize_backtest(backtest[~backtest["spans_float"]]),
+        "float": summarize_backtest(backtest[backtest["spans_float"]]),
     }

@@ -7,5 +7,6 @@ pages = st.navigation([
     st.Page("pages/overview.py", title="Overview", icon="📊", default=True),
     st.Page("pages/shock_transmission.py", title="Shock transmission", icon="🛢️"),
     st.Page("pages/scenarios.py", title="Scenarios", icon="🎛️"),
+    st.Page("pages/methodology.py", title="Methodology", icon="📄"),
 ])
 pages.run()
