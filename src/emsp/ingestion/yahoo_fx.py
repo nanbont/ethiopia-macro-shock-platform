@@ -1,6 +1,8 @@
 """Recent birr/USD rates from Yahoo Finance, used only to extend the IMF series."""
 from __future__ import annotations
 
+import warnings
+
 import pandas as pd
 import yfinance as yf
 
@@ -9,7 +11,11 @@ TICKER = "ETB=X"
 
 def get_yahoo_etb_monthly(start: str = "2023-01-01") -> pd.Series:
     """Monthly average birr per US dollar, complete months only."""
-    daily = yf.download(TICKER, start=start, progress=False, auto_adjust=False)
+    with warnings.catch_warnings():
+        # yfinance uses pandas features deprecated in pandas 3; not our code, so silence locally
+        warnings.filterwarnings("ignore", message=".*inplace keyword.*")
+        daily = yf.download(TICKER, start=start, progress=False, auto_adjust=False)
+
     if daily.empty:
         raise ValueError(f"Yahoo Finance returned no data for {TICKER}")
 
