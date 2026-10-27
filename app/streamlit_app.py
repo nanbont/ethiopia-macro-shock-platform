@@ -6,5 +6,6 @@ st.set_page_config(page_title="Ethiopia Macro Shock Platform", page_icon="📈",
 pages = st.navigation([
     st.Page("pages/overview.py", title="Overview", icon="📊", default=True),
     st.Page("pages/shock_transmission.py", title="Shock transmission", icon="🛢️"),
+    st.Page("pages/scenarios.py", title="Scenarios", icon="🎛️"),
 ])
 pages.run()
