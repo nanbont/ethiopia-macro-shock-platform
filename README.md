@@ -121,4 +121,4 @@ The source document is not redistributed in this repository; please use the DOI 
 Interested in data science and quantitative research applied to macroeconomics and development,
 especially in Africa.
 
-[LinkedIn](https://www.linkedin.com/in/nanbon-tadele-a75844233/ · [GitHub](https://github.com/nanbont)
+[LinkedIn](https://www.linkedin.com/in/nanbon-tadele-alemu-a75844233/) · [GitHub](https://github.com/nanbont)
