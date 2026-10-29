@@ -80,8 +80,8 @@ dashboard says so.
 ## Run it locally
 
 ```bash
-git clone https://github.com/nanbont/waga.git
-cd waga
+git clone https://github.com/nanbont/waga-ethiopia.git
+cd waga-ethiopia
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
