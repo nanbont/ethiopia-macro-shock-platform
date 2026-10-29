@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ethiopia-macro-shock-platform"
+name = "waga"
 version = "0.1.0"
-description = "VAR-based analysis of commodity and exchange-rate pass-through to inflation in Ethiopia"
+description = "Ethiopia Macroeconomic Shock Platform: commodity and exchange-rate pass-through to inflation"
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2",

@@ -5,10 +5,12 @@ import streamlit as st
 from emsp.viz.theme import ACCENT, HIGHLIGHT, MUTED, style_figure
 from shared import load_data, yoy_inflation
 
-st.title("Ethiopia Macroeconomic Shock Platform")
-st.caption(
-    "How global oil and fertilizer price shocks, and the birr exchange rate, "
-    "pass through to consumer prices in Ethiopia."
+st.title("Waga")
+st.subheader("Ethiopia Macroeconomic Shock Platform")
+st.markdown(
+    "*Waga* (ዋጋ) means *price* in Amharic. This dashboard measures how oil and fertilizer "
+    "prices on world markets, and the birr exchange rate, pass through to consumer prices "
+    "in Ethiopia."
 )
 
 data, coverage, prices = load_data()
